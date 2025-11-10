@@ -1,0 +1,142 @@
+{
+  "asset": {
+    "generator": "Tripo",
+    "version": "2.0"
+  },
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "mesh": 0,
+      "name": "tripo_node_3a763c7b-814f-45ae-9d5e-5e8cb69d3b5f"
+    }
+  ],
+  "materials": [
+    {
+      "name": "tripo_mat_3a763c7b-814f-45ae-9d5e-5e8cb69d3b5f",
+      "normalTexture": {
+        "index": 0
+      },
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 1
+        },
+        "metallicRoughnessTexture": {
+          "index": 2
+        }
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "tripo_mesh_3a763c7b-814f-45ae-9d5e-5e8cb69d3b5f",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 0,
+            "TEXCOORD_0": 1
+          },
+          "indices": 2,
+          "material": 0
+        }
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "sampler": 0,
+      "source": 0
+    },
+    {
+      "sampler": 0,
+      "source": 1
+    },
+    {
+      "sampler": 0,
+      "source": 2
+    }
+  ],
+  "images": [
+    {
+      "name": "tripo_image_3a763c7b-814f-45ae-9d5e-5e8cb69d3b5f_2",
+      "uri": "castle1_1_img0.jpg"
+    },
+    {
+      "name": "tripo_image_3a763c7b-814f-45ae-9d5e-5e8cb69d3b5f_0",
+      "uri": "castle1_1_img1.jpg"
+    },
+    {
+      "name": "tripo_image_3a763c7b-814f-45ae-9d5e-5e8cb69d3b5f_1",
+      "uri": "castle1_1_img2.jpg"
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "componentType": 5126,
+      "count": 536066,
+      "max": [
+        0.31683349609375,
+        0.5,
+        0.324676513671875
+      ],
+      "min": [
+        -0.31683349609375,
+        -0.5,
+        -0.324676513671875
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 536066,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 2,
+      "componentType": 5125,
+      "count": 3000498,
+      "type": "SCALAR"
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteLength": 6432792,
+      "byteOffset": 0,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 4288528,
+      "byteOffset": 6432792,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 12001992,
+      "byteOffset": 10721320,
+      "target": 34963
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987
+    }
+  ],
+  "buffers": [
+    {
+      "uri": "castle1_1_data.bin",
+      "byteLength": 22723312
+    }
+  ]
+}

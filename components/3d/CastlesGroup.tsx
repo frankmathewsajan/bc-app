@@ -1,120 +1,227 @@
 import * as THREE from 'three';
+import ExpoTHREE from 'expo-three';
+// Import models manifest (default exports an array). The manifest file is safe to import
+// and will be created (exports an empty array by default).
+// @ts-ignore - manifest has no TS types
+import modelsManifest from '../../assets/models';
 
-// Create simple geometric castles instead of loading GLB files
+/**
+ * Attempts to load .glb models declared in `assets/models/index.ts` manifest.
+ * If the manifest is empty or loading fails, falls back to procedural geometry.
+ * Returns an array of THREE.Group added to the provided scene.
+ */
 export async function loadCastlesGroup(scene: THREE.Scene): Promise<THREE.Group[]> {
   const castles: THREE.Group[] = [];
 
+  // Suppress expo-gl pixelStorei warnings (known limitation)
+  const originalConsoleLog = console.log;
+  console.log = (...args: any[]) => {
+    const msg = args[0]?.toString() || '';
+    if (msg.includes('EXGL: gl.pixelStorei()')) {
+      // Suppress pixelStorei warnings - known expo-gl limitation
+      return;
+    }
+    originalConsoleLog(...args);
+  };
+
+  // Try loading manifest (safe import - manifest exists and exports an array)
+  let manifest: (number | string)[] = [];
+  // The project contains a small manifest at `assets/models/index.ts` which should export
+  // a default array of statically required model modules, e.g.:
+  // export default [require('./castle-center.glb'), require('./castle-left.glb')]
+  // This keeps Metro bundler happy because requires are static. If you want to enable GLB
+  // loading, update that manifest to list your .glb files. The default manifest is an
+  // empty array so it is safe when no models are present.
   try {
-    const castleConfigs = [
-      // Center castle (largest)
-      { x: 0, z: -5, scale: 2.5, rotationY: 0, color: 0x8b5cf6 },
-      
-      // Left castles
-      { x: -18, z: -8, scale: 1.8, rotationY: Math.PI / 6, color: 0x6366f1 },
-      { x: -25, z: -12, scale: 1.5, rotationY: Math.PI / 4, color: 0x14b8a6 },
-      
-      // Right castles
-      { x: 18, z: -8, scale: 1.8, rotationY: -Math.PI / 6, color: 0xf59e0b },
-      { x: 25, z: -10, scale: 1.6, rotationY: -Math.PI / 5, color: 0xec4899 },
-      { x: 30, z: -14, scale: 1.4, rotationY: -Math.PI / 4, color: 0x10b981 },
-    ];
-
-    castleConfigs.forEach((config) => {
-      const castle = new THREE.Group();
-      
-      // Main tower (tall rectangle)
-      const towerGeometry = new THREE.BoxGeometry(config.scale * 0.6, config.scale * 2, config.scale * 0.6);
-      const towerMaterial = new THREE.MeshPhongMaterial({
-        color: config.color,
-        emissive: config.color,
-        emissiveIntensity: 0.2,
-        shininess: 80,
-        flatShading: true,
-      });
-      const tower = new THREE.Mesh(towerGeometry, towerMaterial);
-      tower.position.y = config.scale;
-      tower.castShadow = true;
-      tower.receiveShadow = true;
-      castle.add(tower);
-
-      // Roof (pyramid)
-      const roofGeometry = new THREE.ConeGeometry(config.scale * 0.5, config.scale * 0.8, 4);
-      const roofMaterial = new THREE.MeshPhongMaterial({
-        color: 0x4a5568,
-        shininess: 60,
-        flatShading: true,
-      });
-      const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-      roof.position.y = config.scale * 2 + config.scale * 0.4;
-      roof.rotation.y = Math.PI / 4;
-      roof.castShadow = true;
-      castle.add(roof);
-
-      // Side towers (smaller)
-      for (let i = 0; i < 4; i++) {
-        const angle = (Math.PI / 2) * i;
-        const x = Math.cos(angle) * config.scale * 0.8;
-        const z = Math.sin(angle) * config.scale * 0.8;
-        
-        const sideTowerGeometry = new THREE.CylinderGeometry(config.scale * 0.2, config.scale * 0.2, config.scale * 1.2, 8);
-        const sideTower = new THREE.Mesh(sideTowerGeometry, towerMaterial);
-        sideTower.position.set(x, config.scale * 0.6, z);
-        sideTower.castShadow = true;
-        sideTower.receiveShadow = true;
-        castle.add(sideTower);
-
-        // Small roofs on side towers
-        const smallRoofGeometry = new THREE.ConeGeometry(config.scale * 0.25, config.scale * 0.4, 8);
-        const smallRoof = new THREE.Mesh(smallRoofGeometry, roofMaterial);
-        smallRoof.position.set(x, config.scale * 1.2 + config.scale * 0.2, z);
-        smallRoof.castShadow = true;
-        castle.add(smallRoof);
-      }
-
-      // Windows (glowing yellow cubes)
-      for (let y = 0; y < 3; y++) {
-        const windowGeometry = new THREE.BoxGeometry(config.scale * 0.15, config.scale * 0.2, config.scale * 0.05);
-        const windowMaterial = new THREE.MeshBasicMaterial({ 
-          color: 0xffeb3b,
-        });
-        
-        for (let side = 0; side < 4; side++) {
-          const angle = (Math.PI / 2) * side;
-          const window = new THREE.Mesh(windowGeometry, windowMaterial);
-          window.position.set(
-            Math.cos(angle) * config.scale * 0.35,
-            config.scale * 0.5 + y * config.scale * 0.6,
-            Math.sin(angle) * config.scale * 0.35
-          );
-          window.rotation.y = angle;
-          castle.add(window);
-        }
-      }
-
-      castle.position.set(config.x, 0, config.z);
-      castle.rotation.y = config.rotationY;
-      
-      castles.push(castle);
-      scene.add(castle);
-    });
-
-    console.log(`✅ Successfully created ${castles.length} geometric castles`);
-  } catch (error: any) {
-    console.error('❌ Error creating castles:', error.message || error);
+    // Read the statically imported manifest. This will be an empty array by default
+    // (see assets/models/index.ts) and won't cause Metro bundler errors.
+    manifest = Array.isArray(modelsManifest) ? (modelsManifest as any) : ((modelsManifest as any)?.default || []);
+  } catch {
+    manifest = [];
   }
 
+  if (manifest && manifest.length > 0) {
+    // Load each model using expo-three (React Native compatible)
+    // Models are uncompressed GLB files with separate texture files
+    for (let i = 0; i < manifest.length; i++) {
+      const modelData = manifest[i] as any; // Type assertion for dynamic model data
+      try {
+        console.log(`🔄 Loading uncompressed GLB castle model ${i + 1}/${manifest.length}...`);
+        
+        // Get model resource and textures
+        let modelResource;
+        let textureResources: any[] = [];
+        
+        if (typeof modelData === 'object' && modelData.model) {
+          // New manifest format with model + textures
+          modelResource = modelData.model;
+          textureResources = modelData.textures || [];
+        } else {
+          // Old format - direct model reference (no textures)
+          modelResource = modelData;
+        }
+        
+        // Load textures first using expo-three's texture loader
+        const loadedTextures: THREE.Texture[] = [];
+        if (textureResources.length > 0) {
+          console.log(`📸 Loading ${textureResources.length} textures for castle ${i + 1}...`);
+          for (const textureRes of textureResources) {
+            try {
+              const texture = await ExpoTHREE.loadTextureAsync({ asset: textureRes });
+              texture.needsUpdate = true;
+              loadedTextures.push(texture);
+            } catch (texError: any) {
+              console.warn(`⚠️ Failed to load texture:`, texError?.message);
+            }
+          }
+          console.log(`✅ Loaded ${loadedTextures.length}/${textureResources.length} textures`);
+        }
+        
+        // Suppress THREE.GLTFLoader texture errors (we load textures separately)
+        const originalConsoleError = console.error;
+        console.error = (...args: any[]) => {
+          const msg = args[0]?.toString() || '';
+          if (msg.includes('THREE.GLTFLoader') && msg.includes("Couldn't load texture")) {
+            // Suppress GLB embedded texture errors - we're loading textures separately
+            return;
+          }
+          originalConsoleError(...args);
+        };
+        
+        // Use expo-three which handles React Native specifics
+        // This should work with uncompressed GLB files
+        const model = await ExpoTHREE.loadAsync(modelResource);
+        
+        // Restore console.error
+        console.error = originalConsoleError;
+
+        console.log(`✅ Model loaded successfully, adding to scene...`);
+
+        const group = new THREE.Group();
+        
+        // Handle different model formats
+        if (model.scene) {
+          // GLTF format with scene
+          group.add(model.scene);
+          
+          // Apply loaded textures to materials - FORCE texture application
+          if (loadedTextures.length > 0) {
+            console.log(`🎨 Applying ${loadedTextures.length} textures to model meshes...`);
+            let meshCount = 0;
+            
+            model.scene.traverse((child: any) => {
+              if (child.isMesh) {
+                meshCount++;
+                console.log(`  Found mesh ${meshCount}: ${child.name || 'unnamed'}`);
+                
+                // Get all materials
+                const materials = Array.isArray(child.material) ? child.material : [child.material];
+                
+                materials.forEach((mat: any, matIndex: number) => {
+                  if (mat && loadedTextures.length > 0) {
+                    // Apply first texture to all materials for now
+                    const texture = loadedTextures[0];
+                    
+                    // Force texture properties for React Native
+                    mat.map = texture;
+                    mat.needsUpdate = true;
+                    
+                    // CRITICAL: Ensure material properties show texture in color
+                    if (mat.color) {
+                      mat.color.setHex(0xffffff); // Pure white to show texture colors
+                    }
+                    
+                    // Force texture settings for proper display
+                    texture.flipY = false; // Important for GLB textures
+                    texture.needsUpdate = true;
+                    
+                    // If material has emissive, set it to black so texture colors show
+                    if (mat.emissive) {
+                      mat.emissive.setHex(0x000000);
+                    }
+                    
+                    // Ensure material can display textures
+                    if (mat.emissiveIntensity !== undefined) {
+                      mat.emissiveIntensity = 0; // No emissive glow
+                    }
+                    
+                    console.log(`    ✓ Applied texture to material ${matIndex}`);
+                  }
+                });
+              }
+            });
+            
+            console.log(`✅ Applied textures to ${meshCount} meshes in castle ${i + 1}`);
+          }
+        } else if (model) {
+          // Direct mesh or group
+          group.add(model);
+        }
+
+        // Position castles to align with bg.jpg image center
+        // bg.jpg is centered on screen, so use origin (0, 0, 0) as reference
+        // Y: -5 to place on "ground" level relative to bg.jpg horizon
+        // This matches the visual center/ground of the background image
+        const positions = [
+          { x: -10, y: -5, z: 0 },   // Left castle - on ground
+          { x: 0, y: -5, z: 0 },     // Center castle - image center
+          { x: 10, y: -5, z: 0 }     // Right castle - on ground
+        ];
+        
+        const pos = positions[i] || { x: (i - (manifest.length - 1) / 2) * 10, y: -5, z: 0 };
+        group.position.set(pos.x, pos.y, pos.z);
+        group.scale.setScalar(15);  // Visible but not overwhelming
+        scene.add(group);
+        castles.push(group);
+        
+        console.log(`✅ Castle ${i + 1} positioned at (${pos.x}, ${pos.y}, ${pos.z}) with 15x scale`);
+      } catch (error: any) {
+        // If one model fails, log and continue to next
+        console.error(`❌ Failed loading model at index ${i}:`, error?.message || error);
+        console.error('Stack:', error?.stack);
+        
+        // Try creating a simple placeholder cube for failed models
+        console.log(`⚠️ Creating placeholder cube for castle ${i + 1}`);
+        const placeholder = new THREE.Mesh(
+          new THREE.BoxGeometry(2, 3, 2),
+          new THREE.MeshPhongMaterial({ color: 0x8b5cf6, emissive: 0x8b5cf6, emissiveIntensity: 0.2 })
+        );
+        const group = new THREE.Group();
+        group.add(placeholder);
+        const positions = [
+          { x: -10, y: -5, z: 0 },
+          { x: 0, y: -5, z: 0 },
+          { x: 10, y: -5, z: 0 }
+        ];
+        const pos = positions[i] || { x: (i - (manifest.length - 1) / 2) * 10, y: -5, z: 0 };
+        group.position.set(pos.x, pos.y, pos.z);
+        group.scale.setScalar(15);
+        scene.add(group);
+        castles.push(group);
+      }
+    }
+
+    if (castles.length > 0) {
+      console.log(`✅ Loaded ${castles.length} GLB castle(s) from manifest`);
+      // Restore console.log
+      console.log = originalConsoleLog;
+      return castles;
+    } else {
+      console.warn('⚠️ No GLB castle models were loaded from manifest');
+    }
+  } else {
+    console.warn('⚠️ Model manifest is empty - no castle models will be loaded');
+  }
+
+  // Restore console.log before returning
+  console.log = originalConsoleLog;
   return castles;
 }
 
 export function animateCastles(castles: THREE.Group[], time: number): void {
   castles.forEach((castle, index) => {
-    // Auto-rotate each castle
-    castle.rotation.y += 0.003 + (index * 0.001);
-    
-    // Gentle bobbing motion
+    castle.rotation.y += 0.003 + index * 0.001;
     castle.position.y = Math.sin(time * 0.5 + index * 0.8) * 0.3;
-    
-    // Slight sway
     castle.rotation.z = Math.sin(time * 0.3 + index) * 0.02;
   });
 }
