@@ -1,5 +1,5 @@
-import * as THREE from 'three';
 import ExpoTHREE from 'expo-three';
+import * as THREE from 'three';
 // Import models manifest (default exports an array). The manifest file is safe to import
 // and will be created (exports an empty array by default).
 // @ts-ignore - manifest has no TS types
@@ -114,38 +114,56 @@ export async function loadCastlesGroup(scene: THREE.Scene): Promise<THREE.Group[
                 meshCount++;
                 console.log(`  Found mesh ${meshCount}: ${child.name || 'unnamed'}`);
                 
+                // Check if geometry has vertex colors
+                const hasVertexColors = child.geometry?.attributes?.color !== undefined;
+                console.log(`    Mesh has vertex colors: ${hasVertexColors}`);
+                
                 // Get all materials
                 const materials = Array.isArray(child.material) ? child.material : [child.material];
                 
                 materials.forEach((mat: any, matIndex: number) => {
-                  if (mat && loadedTextures.length > 0) {
-                    // Apply first texture to all materials for now
-                    const texture = loadedTextures[0];
+                  if (mat) {
+                    console.log(`    Material ${matIndex} type: ${mat.type}, has map: ${!!mat.map}, color: ${mat.color?.getHexString()}`);
                     
-                    // Force texture properties for React Native
-                    mat.map = texture;
-                    mat.needsUpdate = true;
-                    
-                    // CRITICAL: Ensure material properties show texture in color
-                    if (mat.color) {
-                      mat.color.setHex(0xffffff); // Pure white to show texture colors
+                    // DON'T override existing textures! Only add if missing
+                    if (!mat.map && loadedTextures.length > 0) {
+                      const texture = loadedTextures[0];
+                      texture.flipY = false;
+                      texture.colorSpace = THREE.SRGBColorSpace;
+                      texture.needsUpdate = true;
+                      mat.map = texture;
+                      console.log(`    ✓ Applied external texture to material ${matIndex}`);
+                    } else if (mat.map) {
+                      // Material already has a texture - just refresh it
+                      mat.map.colorSpace = THREE.SRGBColorSpace;
+                      mat.map.needsUpdate = true;
+                      console.log(`    ✓ Refreshed existing texture on material ${matIndex}`);
                     }
                     
-                    // Force texture settings for proper display
-                    texture.flipY = false; // Important for GLB textures
-                    texture.needsUpdate = true;
+                    // CRITICAL: Don't override the color! Keep original colors
+                    // Only ensure it's not pure black
+                    if (mat.color && mat.color.getHex() === 0x000000) {
+                      mat.color.setHex(0xffffff);
+                      console.log(`    ⚠️ Fixed black color on material ${matIndex}`);
+                    }
                     
-                    // If material has emissive, set it to black so texture colors show
+                    // Disable emissive darkness
                     if (mat.emissive) {
                       mat.emissive.setHex(0x000000);
                     }
+                    mat.emissiveIntensity = 0;
                     
-                    // Ensure material can display textures
-                    if (mat.emissiveIntensity !== undefined) {
-                      mat.emissiveIntensity = 0; // No emissive glow
+                    // Enable vertex colors if present
+                    mat.vertexColors = hasVertexColors;
+                    
+                    // Better PBR settings for Standard/Physical materials
+                    if (mat.metalness !== undefined) {
+                      mat.metalness = 0.2;
+                      mat.roughness = 0.8;
                     }
                     
-                    console.log(`    ✓ Applied texture to material ${matIndex}`);
+                    // Force material update
+                    mat.needsUpdate = true;
                   }
                 });
               }
@@ -158,23 +176,21 @@ export async function loadCastlesGroup(scene: THREE.Scene): Promise<THREE.Group[
           group.add(model);
         }
 
-        // Position castles to align with bg.jpg image center
-        // bg.jpg is centered on screen, so use origin (0, 0, 0) as reference
-        // Y: -5 to place on "ground" level relative to bg.jpg horizon
-        // This matches the visual center/ground of the background image
+        // Position castles - spread horizontally, LOWER vertically for proper centering
+        // In landscape, screen center is around y=-5 to y=-10 in world space
         const positions = [
-          { x: -10, y: -5, z: 0 },   // Left castle - on ground
-          { x: 0, y: -5, z: 0 },     // Center castle - image center
-          { x: 10, y: -5, z: 0 }     // Right castle - on ground
+          { x: -25, y: -8, z: 0 },   // Left castle - moved DOWN
+          { x: 0, y: -8, z: 0 },     // Center castle - moved DOWN
+          { x: 25, y: -8, z: 0 }     // Right castle - moved DOWN
         ];
         
-        const pos = positions[i] || { x: (i - (manifest.length - 1) / 2) * 10, y: -5, z: 0 };
+        const pos = positions[i] || { x: (i - (manifest.length - 1) / 2) * 25, y: -8, z: 0 };
         group.position.set(pos.x, pos.y, pos.z);
-        group.scale.setScalar(15);  // Visible but not overwhelming
+        group.scale.setScalar(18);  // Reasonable size - not too big
         scene.add(group);
         castles.push(group);
         
-        console.log(`✅ Castle ${i + 1} positioned at (${pos.x}, ${pos.y}, ${pos.z}) with 15x scale`);
+        console.log(`✅ Castle ${i + 1} positioned at (${pos.x}, ${pos.y}, ${pos.z}) with 18x scale`);
       } catch (error: any) {
         // If one model fails, log and continue to next
         console.error(`❌ Failed loading model at index ${i}:`, error?.message || error);
@@ -189,13 +205,13 @@ export async function loadCastlesGroup(scene: THREE.Scene): Promise<THREE.Group[
         const group = new THREE.Group();
         group.add(placeholder);
         const positions = [
-          { x: -10, y: -5, z: 0 },
-          { x: 0, y: -5, z: 0 },
-          { x: 10, y: -5, z: 0 }
+          { x: -25, y: -8, z: 0 },
+          { x: 0, y: -8, z: 0 },
+          { x: 25, y: -8, z: 0 }
         ];
-        const pos = positions[i] || { x: (i - (manifest.length - 1) / 2) * 10, y: -5, z: 0 };
+        const pos = positions[i] || { x: (i - (manifest.length - 1) / 2) * 25, y: -8, z: 0 };
         group.position.set(pos.x, pos.y, pos.z);
-        group.scale.setScalar(15);
+        group.scale.setScalar(18);
         scene.add(group);
         castles.push(group);
       }
@@ -221,7 +237,8 @@ export async function loadCastlesGroup(scene: THREE.Scene): Promise<THREE.Group[
 export function animateCastles(castles: THREE.Group[], time: number): void {
   castles.forEach((castle, index) => {
     castle.rotation.y += 0.003 + index * 0.001;
-    castle.position.y = Math.sin(time * 0.5 + index * 0.8) * 0.3;
+    // Gentler floating animation centered at y=0
+    castle.position.y = Math.sin(time * 0.5 + index * 0.8) * 0.5;
     castle.rotation.z = Math.sin(time * 0.3 + index) * 0.02;
   });
 }
