@@ -1,19 +1,20 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Animated, Alert } from 'react-native';
+import BackgroundScene from '@/components/3d/BackgroundScene';
+import AuthButton from '@/components/auth/AuthButton';
+import AuthInput from '@/components/auth/AuthInput';
+import { supabase } from '@/lib/supabase';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useForm, Controller } from 'react-hook-form';
-import { supabase } from '@/lib/supabase';
-import BackgroundScene from '@/components/3d/BackgroundScene';
-import AuthInput from '@/components/auth/AuthInput';
-import AuthButton from '@/components/auth/AuthButton';
+import React, { useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { Alert, Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function SignupScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
-  const { control, handleSubmit, watch } = useForm({ 
+  const [step, setStep] = useState(1); // Step 1: Basic info, Step 2: Additional info
+  const { control, handleSubmit, watch, trigger } = useForm({ 
     defaultValues: { 
       fullName: '', 
       email: '', 
@@ -29,6 +30,14 @@ export default function SignupScreen() {
   React.useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
   }, [fadeAnim]);
+
+  const goToStep2 = async () => {
+    // Validate step 1 fields
+    const isValid = await trigger(['fullName', 'email', 'password', 'confirmPassword']);
+    if (isValid) {
+      setStep(2);
+    }
+  };
 
   const onSubmit = async (data: any) => {
     if (data.password !== data.confirmPassword) {
@@ -75,115 +84,135 @@ export default function SignupScreen() {
     <View style={styles.container}>
       <StatusBar style="light" />
       <BackgroundScene />
-      <LinearGradient colors={['rgba(10,14,39,0.4)', 'rgba(10,14,39,0.8)']} style={styles.overlay} />
+      <LinearGradient colors={['rgba(10,14,39,0.5)', 'rgba(10,14,39,0.85)']} style={styles.overlay} />
       
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <Animated.View style={[styles.formContainer, { opacity: fadeAnim, transform: [{ translateY: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [50, 0] }) }] }]}>
-            
-            <View style={styles.headerContainer}>
-              <Text style={styles.title}>BeingCosmic</Text>
-              <Text style={styles.subtitle}>🚀 Start Your Learning Journey</Text>
+      {/* Landscape layout - Split screen */}
+      <Animated.View style={[styles.landscapeContainer, { opacity: fadeAnim }]}>
+        
+        {/* Left side - Compact single-column form */}
+        <View style={styles.leftSection}>
+          <View style={styles.compactCard}>
+            {/* Step indicator */}
+            <View style={styles.stepIndicator}>
+              <View style={[styles.stepDot, step === 1 && styles.stepDotActive]} />
+              <View style={[styles.stepDot, step === 2 && styles.stepDotActive]} />
             </View>
 
-            <View style={styles.glassCard}>
-              <Text style={styles.welcomeText}>Create Account</Text>
-              <Text style={styles.descriptionText}>Join thousands of learners exploring the cosmos</Text>
+            {step === 1 ? (
+              <>
+                {/* Step 1: Basic Information */}
+                <Text style={styles.stepTitle}>Basic Information</Text>
+                
+                <Controller
+                  control={control}
+                  rules={{ required: true, minLength: 2 }}
+                  render={({ field: { onChange, value } }) => (
+                    <AuthInput icon="person-outline" placeholder="Full Name" value={value} onChangeText={onChange} />
+                  )}
+                  name="fullName"
+                />
 
-              <Controller
-                control={control}
-                rules={{ required: true, minLength: 2 }}
-                render={({ field: { onChange, value } }) => (
-                  <AuthInput icon="person-outline" placeholder="Full Name" value={value} onChangeText={onChange} />
-                )}
-                name="fullName"
-              />
+                <Controller
+                  control={control}
+                  rules={{ required: true, pattern: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i }}
+                  render={({ field: { onChange, value } }) => (
+                    <AuthInput icon="mail-outline" placeholder="Email" value={value} onChangeText={onChange} keyboardType="email-address" />
+                  )}
+                  name="email"
+                />
 
-              <Controller
-                control={control}
-                rules={{ required: true, minLength: 1 }}
-                render={({ field: { onChange, value } }) => (
-                  <AuthInput icon="school-outline" placeholder="Class (e.g., 10th Grade)" value={value} onChangeText={onChange} />
-                )}
-                name="class"
-              />
+                <Controller
+                  control={control}
+                  rules={{ required: true, minLength: 6 }}
+                  render={({ field: { onChange, value } }) => (
+                    <AuthInput icon="lock-closed-outline" placeholder="Password" value={value} onChangeText={onChange} isPassword />
+                  )}
+                  name="password"
+                />
 
-              <Controller
-                control={control}
-                rules={{ 
-                  required: true, 
-                  pattern: /^[0-9]{10}$/
-                }}
-                render={({ field: { onChange, value } }) => (
-                  <AuthInput 
-                    icon="call-outline" 
-                    placeholder="Contact Number" 
-                    value={value} 
-                    onChangeText={onChange} 
-                    keyboardType="phone-pad"
-                    maxLength={10}
-                  />
-                )}
-                name="contactNumber"
-              />
+                <Controller
+                  control={control}
+                  rules={{ required: true, validate: (value) => value === password || 'Passwords do not match' }}
+                  render={({ field: { onChange, value } }) => (
+                    <AuthInput icon="lock-closed-outline" placeholder="Confirm Password" value={value} onChangeText={onChange} isPassword />
+                  )}
+                  name="confirmPassword"
+                />
 
-              <Controller
-                control={control}
-                rules={{ required: true, minLength: 2 }}
-                render={({ field: { onChange, value } }) => (
-                  <AuthInput icon="business-outline" placeholder="Organization/School" value={value} onChangeText={onChange} />
-                )}
-                name="organization"
-              />
+                <View style={styles.buttonContainer}>
+                  <View style={{ width: '100%' }}>
+                    <AuthButton title="Next Step" onPress={goToStep2} loading={false} />
+                  </View>
+                </View>
+              </>
+            ) : (
+              <>
+                {/* Step 2: Additional Information */}
+                <Text style={styles.stepTitle}>Additional Details</Text>
+                
+                <Controller
+                  control={control}
+                  rules={{ required: true, pattern: /^[0-9]{10}$/ }}
+                  render={({ field: { onChange, value } }) => (
+                    <AuthInput 
+                      icon="call-outline" 
+                      placeholder="Contact Number (10 digits)" 
+                      value={value} 
+                      onChangeText={onChange} 
+                      keyboardType="phone-pad"
+                      maxLength={10}
+                    />
+                  )}
+                  name="contactNumber"
+                />
 
-              <Controller
-                control={control}
-                rules={{ required: true, pattern: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i }}
-                render={({ field: { onChange, value } }) => (
-                  <AuthInput icon="mail-outline" placeholder="Email" value={value} onChangeText={onChange} keyboardType="email-address" />
-                )}
-                name="email"
-              />
+                <Controller
+                  control={control}
+                  rules={{ required: true, minLength: 1 }}
+                  render={({ field: { onChange, value } }) => (
+                    <AuthInput icon="school-outline" placeholder="Class (e.g., 10th Grade)" value={value} onChangeText={onChange} />
+                  )}
+                  name="class"
+                />
 
-              <Controller
-                control={control}
-                rules={{ required: true, minLength: 6 }}
-                render={({ field: { onChange, value } }) => (
-                  <AuthInput icon="lock-closed-outline" placeholder="Password" value={value} onChangeText={onChange} isPassword />
-                )}
-                name="password"
-              />
+                <Controller
+                  control={control}
+                  rules={{ required: true, minLength: 2 }}
+                  render={({ field: { onChange, value } }) => (
+                    <AuthInput icon="business-outline" placeholder="Organization/School" value={value} onChangeText={onChange} />
+                  )}
+                  name="organization"
+                />
 
-              <Controller
-                control={control}
-                rules={{ required: true, validate: (value) => value === password || 'Passwords do not match' }}
-                render={({ field: { onChange, value } }) => (
-                  <AuthInput icon="lock-closed-outline" placeholder="Confirm Password" value={value} onChangeText={onChange} isPassword />
-                )}
-                name="confirmPassword"
-              />
+                <View style={styles.actionRow}>
+                  <TouchableOpacity style={styles.backButton} onPress={() => setStep(1)}>
+                    <Text style={styles.backButtonText}>Back</Text>
+                  </TouchableOpacity>
+                  <View style={{ flex: 1 }}>
+                    <AuthButton title="Create Account" onPress={handleSubmit(onSubmit)} loading={loading} />
+                  </View>
+                </View>
+              </>
+            )}
 
-              <Text style={styles.termsText}>
-                By signing up, you agree to our <Text style={styles.termsLink}>Terms & Conditions</Text>
-              </Text>
-
-              <AuthButton title="Create Account" onPress={handleSubmit(onSubmit)} loading={loading} />
-
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              <TouchableOpacity onPress={() => router.back()} style={styles.loginLink}>
-                <Text style={styles.loginText}>
-                  Already have an account? <Text style={styles.loginTextBold}>Sign In</Text>
-                </Text>
+            <View style={styles.bottomLinks}>
+              <Text style={styles.termsText}>By signing up, you agree to Terms</Text>
+              <TouchableOpacity onPress={() => router.back()}>
+                <Text style={styles.loginTextBold}>Sign In</Text>
               </TouchableOpacity>
             </View>
-          </Animated.View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          </View>
+        </View>
+
+        {/* Right side - Branding */}
+        <View style={styles.rightSection}>
+          <View style={styles.brandingContainer}>
+            <Text style={styles.title}>BeingCosmic</Text>
+            <Text style={styles.subtitle}>🚀 Start Your Learning Journey</Text>
+            <Text style={styles.welcomeText}>Create Account</Text>
+          </View>
+        </View>
+      </Animated.View>
     </View>
   );
 }
@@ -191,21 +220,137 @@ export default function SignupScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0e27' },
   overlay: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
-  keyboardView: { flex: 1, zIndex: 2 },
-  scrollContent: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 40 },
-  formContainer: { width: '100%', maxWidth: 400, alignSelf: 'center' },
-  headerContainer: { alignItems: 'center', marginBottom: 40 },
-  title: { fontSize: 36, fontWeight: 'bold', color: '#fff', marginBottom: 8, textShadowColor: 'rgba(99,102,241,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 },
-  subtitle: { fontSize: 16, color: 'rgba(255,255,255,0.7)' },
-  glassCard: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 24, padding: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  welcomeText: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 8 },
-  descriptionText: { fontSize: 14, color: 'rgba(255,255,255,0.6)', marginBottom: 24 },
-  termsText: { fontSize: 12, color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginBottom: 16 },
-  termsLink: { color: '#6366f1', textDecorationLine: 'underline' },
-  divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 20 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
-  dividerText: { color: 'rgba(255,255,255,0.5)', paddingHorizontal: 12, fontSize: 14 },
-  loginLink: { alignItems: 'center', marginTop: 8 },
-  loginText: { color: 'rgba(255,255,255,0.7)', fontSize: 14 },
-  loginTextBold: { color: '#8b5cf6', fontWeight: '600' },
+  
+  // Landscape split-screen layout
+  landscapeContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    zIndex: 2,
+    paddingHorizontal: 40,
+    paddingVertical: 20,
+  },
+  
+  // Left side - Compact form (60%)
+  leftSection: {
+    flex: 0.6,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingRight: 30,
+  },
+  
+  // Right side - Branding (30%)
+  rightSection: {
+    flex: 0.3,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    paddingLeft: 10,
+  },
+  brandingContainer: {
+    gap: 8,
+  },
+  title: { 
+    fontSize: 28, 
+    fontWeight: 'bold', 
+    color: '#fff', 
+    textShadowColor: 'rgba(99,102,241,0.6)', 
+    textShadowOffset: { width: 0, height: 2 }, 
+    textShadowRadius: 10,
+    letterSpacing: 0.3,
+  },
+  subtitle: { 
+    fontSize: 12, 
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '500',
+  },
+  welcomeText: { 
+    fontSize: 16, 
+    fontWeight: 'bold', 
+    color: '#fff', 
+    marginTop: 12,
+  },
+  compactCard: { 
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: 'rgba(255,255,255,0.08)', 
+    borderRadius: 16, 
+    padding: 16,
+    paddingTop: 14,
+    paddingBottom: 14,
+    borderWidth: 1.5, 
+    borderColor: 'rgba(139,92,246,0.3)',
+    shadowColor: '#8b5cf6',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+  },
+  
+  // Step indicator
+  stepIndicator: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  stepDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  stepDotActive: {
+    backgroundColor: '#8b5cf6',
+    width: 24,
+  },
+  stepTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  
+  // Buttons
+  buttonContainer: {
+    marginTop: 4,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 4,
+  },
+  backButton: {
+    paddingVertical: 11,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  backButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  
+  // Bottom links
+  bottomLinks: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+  },
+  termsText: { 
+    fontSize: 10, 
+    color: 'rgba(255,255,255,0.5)',
+  },
+  loginTextBold: { 
+    color: '#8b5cf6', 
+    fontWeight: '700',
+    fontSize: 11,
+  },
 });

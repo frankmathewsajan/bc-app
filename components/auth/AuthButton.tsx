@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { StyleSheet, TouchableOpacity, Text, Animated, ActivityIndicator } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useState } from 'react';
+import { ActivityIndicator, Animated, StyleSheet, Text, TouchableOpacity } from 'react-native';
 
 interface Props {
   title: string;
@@ -34,15 +34,17 @@ export default function AuthButton({ title, onPress, loading }: Props) {
 
 const styles = StyleSheet.create({
   button: {
-    paddingVertical: 18,
-    borderRadius: 16,
+    width: '100%',
+    paddingVertical: 11,
+    paddingHorizontal: 20,
+    borderRadius: 10,
     alignItems: 'center',
-    marginVertical: 8,
+    justifyContent: 'center',
     shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  text: { color: '#fff', fontSize: 17, fontWeight: '700', letterSpacing: 0.5 },
+  text: { color: '#fff', fontSize: 13, fontWeight: '700', letterSpacing: 0.2 },
 });

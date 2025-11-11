@@ -6,7 +6,8 @@ export default function AuthLayout() {
   useEffect(() => {
     (async () => {
       try {
-        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+        console.log('🔒 Auth locked to LANDSCAPE');
       } catch (e) {
         // avoid uncaught errors
         console.warn('Failed to lock auth orientation:', e);

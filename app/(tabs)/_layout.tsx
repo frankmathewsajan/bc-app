@@ -1,6 +1,6 @@
+import * as ScreenOrientation from 'expo-screen-orientation';
 import React, { useEffect } from 'react';
 import { ImageBackground, StyleSheet, useWindowDimensions, View } from 'react-native';
-import * as ScreenOrientation from 'expo-screen-orientation';
 
 
 import ModelScene from '@/components/3d/ModelScene';
@@ -12,19 +12,15 @@ export default function TabLayout() {
     (async () => {
       try {
         await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+        console.log('🔒 Tabs locked to LANDSCAPE');
       } catch (err) {
         console.warn('Orientation lock failed:', err);
       }
     })();
 
+    // Don't unlock on unmount - keep it landscape throughout the app
     return () => {
-      (async () => {
-        try {
-          await ScreenOrientation.unlockAsync();
-        } catch (err) {
-          console.warn('Orientation unlock failed:', err);
-        }
-      })();
+      // Keep landscape orientation
     };
   }, []);
 

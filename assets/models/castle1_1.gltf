@@ -21,9 +21,6 @@
   "materials": [
     {
       "name": "tripo_mat_3a763c7b-814f-45ae-9d5e-5e8cb69d3b5f",
-      "normalTexture": {
-        "index": 0
-      },
       "pbrMetallicRoughness": {
         "baseColorTexture": {
           "index": 1
