@@ -1,7 +1,7 @@
 import { GLView } from 'expo-gl';
 import { Renderer } from 'expo-three';
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import * as THREE from 'three';
@@ -284,13 +284,8 @@ export default function ModelScene() {
       camera.position.z = distance * Math.sin(phi) * Math.cos(theta);
       camera.lookAt(0, 0, 0);
 
-      // INDEPENDENT castle rotations - each castle maintains its own rotation
-      castles.forEach((castle, index) => {
-        castle.rotation.y = castleRotationsRef.current[index];
-      });
-
-      // Animate castles (floating animation)
-      animateCastles(castles, t);
+      // Animate castles with INDEPENDENT rotations (floating + user rotations)
+      animateCastles(castles, t, castleRotationsRef.current);
 
       // UPDATE DEBUG INFO - ONLY EVERY 60 FRAMES (~1 second) to reduce lag
       if (frameCountRef.current % 60 === 0) {
@@ -383,17 +378,7 @@ export default function ModelScene() {
         </View>
       )}
       
-      {/* RESET BUTTON - TOP LEFT */}
-      {!loading && (
-        <View style={styles.resetButtonContainer}>
-          <Pressable onPress={resetCamera} style={({ pressed }) => [
-            styles.resetButton,
-            { opacity: pressed ? 0.7 : 1 }
-          ]}>
-            <Text style={styles.resetButtonText}>🔄 RESET</Text>
-          </Pressable>
-        </View>
-      )}
+
       
       {/* REMOVED: Touch visual indicators - caused lag and memory issues */}
       
@@ -517,27 +502,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     marginBottom: 1,
   },
-  // RESET BUTTON - TOP LEFT
-  resetButtonContainer: {
-    position: 'absolute',
-    top: 40,
-    left: 10,
-  },
-  resetButton: {
-    backgroundColor: 'rgba(139, 92, 246, 0.9)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  resetButtonText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
+
   // TOUCH INDICATORS
   touchIndicator: {
     position: 'absolute',

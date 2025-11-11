@@ -65,13 +65,13 @@ async function loadTextureOptimized(textureResource: any, index: number): Promis
       console.log(`    ✓ Texture ${index} (METALLIC/ROUGH): ${texture.image?.width}x${texture.image?.height}`);
     }
     
-    // Common settings for all textures
+    // OPTIMIZED settings for performance
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
-    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    texture.minFilter = THREE.LinearFilter; // Simpler, faster
     texture.magFilter = THREE.LinearFilter;
-    texture.generateMipmaps = true;
-    texture.anisotropy = 4; // Better quality
+    texture.generateMipmaps = false; // Disable for performance
+    texture.anisotropy = 1; // Reduce for performance
     texture.flipY = false; // GLTF standard - DO NOT FLIP
     texture.needsUpdate = true;
     
@@ -119,25 +119,13 @@ function applyTexturesToMesh(
   
   console.log(`    📸 Normal: img0, Color: img1, MetallicRough: img2`);
   
-  // Create PBR material with PROPER texture channels
-  // MeshStandardMaterial = PBR material that matches GLTF spec
-  const pbrMaterial = new THREE.MeshStandardMaterial({
+  // OPTIMIZED PBR material for mobile performance
+  // Use MeshLambertMaterial for better performance than MeshStandardMaterial
+  const pbrMaterial = new THREE.MeshLambertMaterial({
     // THE COLOR MAP - This is what makes it colorful!
     map: colorMap,
     
-    // Normal map for surface detail
-    normalMap: normalMap,
-    normalScale: new THREE.Vector2(1, 1),
-    
-    // Metallic/Roughness combined map (GLTF standard)
-    metalnessMap: metallicRoughnessMap,
-    roughnessMap: metallicRoughnessMap,
-    
-    // Material properties
-    metalness: 0.0,  // Not very metallic
-    roughness: 1.0,  // Fairly rough surface
-    
-    // Rendering
+    // Rendering optimizations
     side: THREE.FrontSide,
     transparent: false,
     fog: false,
@@ -309,8 +297,12 @@ export async function loadCastlesGroup(scene: THREE.Scene): Promise<THREE.Group[
     const pos = positions[i] || positions[0];
     castle.position.set(pos.x, pos.y, pos.z);
     castle.scale.setScalar(scale);
+    
+    // FACE FRONT - Rotate 180° so castles face camera
+    castle.rotation.y = Math.PI; // Face forward
+    
     scene.add(castle);
-    console.log(`  Castle ${i + 1}: (${pos.x}, ${pos.y}, ${pos.z}) @ ${scale}x scale`);
+    console.log(`  Castle ${i + 1}: (${pos.x}, ${pos.y}, ${pos.z}) @ ${scale}x scale, facing front`);
   });
   
   console.log('\n✅ CASTLE LOADER COMPLETE');
@@ -320,7 +312,7 @@ export async function loadCastlesGroup(scene: THREE.Scene): Promise<THREE.Group[
   return castleGroups;
 }
 
-export function animateCastles(castles: THREE.Group[], time: number): void {
+export function animateCastles(castles: THREE.Group[], time: number, baseRotations: number[]): void {
   castles.forEach((castle, index) => {
     // Smooth continuous floating animation - like castles floating in the sky
     const floatSpeed = 0.4; // Slower, smoother motion
@@ -329,7 +321,11 @@ export function animateCastles(castles: THREE.Group[], time: number): void {
     
     castle.position.y = Math.sin(time * floatSpeed + offset) * floatHeight;
     
-    // Very subtle tilt/sway for realism while floating
+    // INDEPENDENT Y-ROTATION - Each castle can be rotated by user tap
+    // Start from Math.PI (facing front) + user's rotation
+    castle.rotation.y = Math.PI + baseRotations[index];
+    
+    // Very subtle tilt/sway for realism while floating (not affecting Y rotation)
     castle.rotation.z = Math.sin(time * 0.15 + offset) * 0.02;
     castle.rotation.x = Math.cos(time * 0.18 + offset * 0.5) * 0.015;
   });
