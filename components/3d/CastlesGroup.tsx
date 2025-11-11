@@ -176,21 +176,20 @@ export async function loadCastlesGroup(scene: THREE.Scene): Promise<THREE.Group[
           group.add(model);
         }
 
-        // Position castles - spread horizontally, LOWER vertically for proper centering
-        // In landscape, screen center is around y=-5 to y=-10 in world space
+        // Position castles at SCREEN CENTER - works for both portrait and landscape
         const positions = [
-          { x: -25, y: -8, z: 0 },   // Left castle - moved DOWN
-          { x: 0, y: -8, z: 0 },     // Center castle - moved DOWN
-          { x: 25, y: -8, z: 0 }     // Right castle - moved DOWN
+          { x: -18, y: 0, z: 0 },   // Left castle
+          { x: 0, y: 0, z: 0 },     // Center castle - TRUE CENTER
+          { x: 18, y: 0, z: 0 }     // Right castle
         ];
         
-        const pos = positions[i] || { x: (i - (manifest.length - 1) / 2) * 25, y: -8, z: 0 };
+        const pos = positions[i] || { x: (i - (manifest.length - 1) / 2) * 18, y: 0, z: 0 };
         group.position.set(pos.x, pos.y, pos.z);
-        group.scale.setScalar(18);  // Reasonable size - not too big
+        group.scale.setScalar(12);  // Good size for landscape
         scene.add(group);
         castles.push(group);
         
-        console.log(`✅ Castle ${i + 1} positioned at (${pos.x}, ${pos.y}, ${pos.z}) with 18x scale`);
+        console.log(`✅ Castle ${i + 1} positioned at (${pos.x}, ${pos.y}, ${pos.z}) with 12x scale`);
       } catch (error: any) {
         // If one model fails, log and continue to next
         console.error(`❌ Failed loading model at index ${i}:`, error?.message || error);
@@ -205,13 +204,13 @@ export async function loadCastlesGroup(scene: THREE.Scene): Promise<THREE.Group[
         const group = new THREE.Group();
         group.add(placeholder);
         const positions = [
-          { x: -25, y: -8, z: 0 },
-          { x: 0, y: -8, z: 0 },
-          { x: 25, y: -8, z: 0 }
+          { x: -18, y: 0, z: 0 },
+          { x: 0, y: 0, z: 0 },
+          { x: 18, y: 0, z: 0 }
         ];
-        const pos = positions[i] || { x: (i - (manifest.length - 1) / 2) * 25, y: -8, z: 0 };
+        const pos = positions[i] || { x: (i - (manifest.length - 1) / 2) * 18, y: 0, z: 0 };
         group.position.set(pos.x, pos.y, pos.z);
-        group.scale.setScalar(18);
+        group.scale.setScalar(12);
         scene.add(group);
         castles.push(group);
       }
